@@ -23,7 +23,8 @@ namespace _Game.Logic.Infrastructure.Systems
         {
             foreach ((RefRW<LocalTransform> localTransform, RefRO<MoveSpeed> moveSpeed,
                          RefRW<PhysicsVelocity> velocity, RefRO<TargetPoint> point) in SystemAPI
-                         .Query<RefRW<LocalTransform>, RefRO<MoveSpeed>, RefRW<PhysicsVelocity>, RefRO<TargetPoint>>())
+                         .Query<RefRW<LocalTransform>, RefRO<MoveSpeed>, RefRW<PhysicsVelocity>,
+                             RefRO<TargetPoint>>()) //перебираем всех ентети ку которых есть трансформ мувспид и велосити и таргет поинт
             {
                 var targetPoint = point.ValueRO.Value;
                 var moveDirection = targetPoint - localTransform.ValueRO.Position;
