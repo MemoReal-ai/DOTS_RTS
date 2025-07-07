@@ -5,11 +5,11 @@ namespace _Game.Logic.Infrastructure.Components
 {
     public struct TargetPoint : IComponentData
     {
-        public float3 Position;
+        public float3 Value;
 
-        public TargetPoint(float3 position)
+        public TargetPoint(float3 value)
         {
-            Position = position;
+            Value = value;
         }
     }
 }

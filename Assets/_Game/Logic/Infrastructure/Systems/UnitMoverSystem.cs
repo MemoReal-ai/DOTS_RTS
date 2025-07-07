@@ -1,5 +1,4 @@
 using _Game.Logic.Infrastructure.Components;
-using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -11,32 +10,34 @@ namespace _Game.Logic.Infrastructure.Systems
 {
     partial struct UnitMoverSystem : ISystem
     {
-        private TargetPoint Position { get; set; }
+        private float _tresHoldDistance;
+        private bool _hasTargetPoint;
 
-        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            _tresHoldDistance = 0.1f * 0.1f;
+            state.RequireForUpdate<TargetPoint>();
+        }
+
         public void OnUpdate(ref SystemState state)
         {
-            if (Input.GetMouseButtonDown(1))
+            foreach ((RefRW<LocalTransform> localTransform, RefRO<MoveSpeed> moveSpeed,
+                         RefRW<PhysicsVelocity> velocity, RefRO<TargetPoint> point) in SystemAPI
+                         .Query<RefRW<LocalTransform>, RefRO<MoveSpeed>, RefRW<PhysicsVelocity>, RefRO<TargetPoint>>())
             {
-                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hit))
-                {
-                    Position = new TargetPoint(hit.point);
-                    Debug.Log(Position.Position.ToString());
-                }
-                
-                foreach ((RefRW<LocalTransform> localTransform, RefRO<MoveSpeed> moveSpeed,
-                             RefRW<PhysicsVelocity> velocity) in SystemAPI
-                             .Query<RefRW<LocalTransform>, RefRO<MoveSpeed>, RefRW<PhysicsVelocity>>())
-                {
-                    var targetPoint = Position.Position; //Здесь клик от мышки должен быть 
-                    var moveDirection = targetPoint - localTransform.ValueRO.Position;
-                    moveDirection = math.normalize(moveDirection);
+                var targetPoint = point.ValueRO.Value;
+                var moveDirection = targetPoint - localTransform.ValueRO.Position;
+                moveDirection = math.normalize(moveDirection);
+                localTransform.ValueRW.Rotation = quaternion.LookRotation(moveDirection, math.up());
+                velocity.ValueRW.Linear = moveDirection * moveSpeed.ValueRO.Value;
+                var distance = math.distancesq(localTransform.ValueRW.Position, targetPoint);
 
-                    localTransform.ValueRW.Rotation = quaternion.LookRotation(moveDirection, math.up());
-
-                    velocity.ValueRW.Linear = moveDirection * moveSpeed.ValueRO.Value;
-                    velocity.ValueRW.Angular = float3.zero;
+                if (distance < (_tresHoldDistance))
+                {
+                    velocity.ValueRW.Linear = float3.zero;
                 }
+
+                velocity.ValueRW.Angular = float3.zero;
             }
         }
     }
