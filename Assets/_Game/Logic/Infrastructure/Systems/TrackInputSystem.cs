@@ -36,7 +36,8 @@ namespace _Game.Logic.Infrastructure.Systems
 
                     var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
 
-                    foreach (var (_, entity)in SystemAPI.Query<RefRO<MoveSpeed>>().WithNone<TargetPoint>()
+                    foreach (var (_, _, entity)in SystemAPI.Query<RefRO<MoveSpeed>, RefRO<SelectedComponent>>()
+                                 .WithNone<TargetPoint>()
                                  .WithEntityAccess()) //Добавляем всем у кого нет TargetPoint-a но есть MoveSpeed компонент Target point  
                     {
                         ecb.AddComponent(entity, _targetPoint); //добовляем к каждой entity  наш TargetPoint

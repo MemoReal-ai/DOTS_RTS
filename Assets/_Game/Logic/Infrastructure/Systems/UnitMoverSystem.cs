@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
+using UnityEngine.Rendering;
 using RaycastHit = UnityEngine.RaycastHit;
 
 namespace _Game.Logic.Infrastructure.Systems
@@ -12,6 +13,7 @@ namespace _Game.Logic.Infrastructure.Systems
     {
         private float _tresHoldDistance;
         private bool _hasTargetPoint;
+        private float3 _targetPoint;
 
         public void OnCreate(ref SystemState state)
         {
@@ -21,25 +23,37 @@ namespace _Game.Logic.Infrastructure.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            foreach ((RefRW<LocalTransform> localTransform, RefRO<MoveSpeed> moveSpeed,
-                         RefRW<PhysicsVelocity> velocity, RefRO<TargetPoint> point) in SystemAPI
+            var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
+            foreach (var (localTransform, moveSpeed, velocity, point, selected, entity) in SystemAPI
                          .Query<RefRW<LocalTransform>, RefRO<MoveSpeed>, RefRW<PhysicsVelocity>,
-                             RefRO<TargetPoint>>()) //перебираем всех ентети ку которых есть трансформ мувспид и велосити и таргет поинт
+                             RefRW<TargetPoint>,
+                             RefRO<SelectedComponent>>()
+                         .WithEntityAccess()) //перебираем всех ентети ку которых есть трансформ мувспид и велосити и таргет поинт
             {
-                var targetPoint = point.ValueRO.Value;
-                var moveDirection = targetPoint - localTransform.ValueRO.Position;
+                if (selected.ValueRO.Selected == false)
+                {
+                    ecb.RemoveComponent<TargetPoint>(entity);
+                    velocity.ValueRW.Linear = float3.zero;
+                    continue;
+                }
+
+                _targetPoint = point.ValueRO.Value;
+                var moveDirection = _targetPoint - localTransform.ValueRO.Position;
                 moveDirection = math.normalize(moveDirection);
                 localTransform.ValueRW.Rotation = quaternion.LookRotation(moveDirection, math.up());
                 velocity.ValueRW.Linear = moveDirection * moveSpeed.ValueRO.Value;
-                var distance = math.distancesq(localTransform.ValueRW.Position, targetPoint);
+                var distance = math.distancesq(localTransform.ValueRW.Position, _targetPoint);
 
                 if (distance < (_tresHoldDistance))
                 {
                     velocity.ValueRW.Linear = float3.zero;
+                    ecb.RemoveComponent<TargetPoint>(entity);
                 }
 
                 velocity.ValueRW.Angular = float3.zero;
             }
+
+            ecb.Playback(state.EntityManager);
         }
     }
 }
