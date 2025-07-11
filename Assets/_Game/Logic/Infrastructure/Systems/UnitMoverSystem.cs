@@ -17,27 +17,36 @@ namespace _Game.Logic.Infrastructure.Systems
 
         public void OnCreate(ref SystemState state)
         {
-            _tresHoldDistance = 0.1f * 0.1f;
+            _tresHoldDistance = 0.4f;
             state.RequireForUpdate<TargetPoint>();
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
+
             foreach (var (localTransform, moveSpeed, velocity, point, selected, entity) in SystemAPI
                          .Query<RefRW<LocalTransform>, RefRO<MoveSpeed>, RefRW<PhysicsVelocity>,
                              RefRW<TargetPoint>,
                              RefRO<SelectedComponent>>()
                          .WithEntityAccess()) //перебираем всех ентети ку которых есть трансформ мувспид и велосити и таргет поинт
             {
+                _targetPoint = point.ValueRO.Value;
+
                 if (selected.ValueRO.Selected == false)
                 {
-                    ecb.RemoveComponent<TargetPoint>(entity);
-                    velocity.ValueRW.Linear = float3.zero;
+                    var targetDistanceNoSelectedUnit = math.distancesq(localTransform.ValueRW.Position, _targetPoint);
+
+                    if (targetDistanceNoSelectedUnit <= _tresHoldDistance)
+                    {
+                        velocity.ValueRW.Linear = float3.zero;
+                        ecb.RemoveComponent<TargetPoint>(entity);
+                    }
+
+
                     continue;
                 }
 
-                _targetPoint = point.ValueRO.Value;
                 var moveDirection = _targetPoint - localTransform.ValueRO.Position;
                 moveDirection = math.normalize(moveDirection);
                 localTransform.ValueRW.Rotation = quaternion.LookRotation(moveDirection, math.up());
@@ -54,6 +63,7 @@ namespace _Game.Logic.Infrastructure.Systems
             }
 
             ecb.Playback(state.EntityManager);
+            
         }
     }
 }

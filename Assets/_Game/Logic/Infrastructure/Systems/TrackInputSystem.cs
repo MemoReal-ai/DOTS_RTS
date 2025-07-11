@@ -28,18 +28,30 @@ namespace _Game.Logic.Infrastructure.Systems
                 {
                     _targetPoint = new TargetPoint(hit.point);
 
-                    foreach (var transform in
-                             SystemAPI.Query<RefRW<TargetPoint>>()) //обновляем TargetPoint после нажатия
+                    foreach (var (transform, selected) in
+                             SystemAPI
+                                 .Query<RefRW<TargetPoint>,
+                                     RefRO<SelectedComponent>>()) //обновляем TargetPoint после нажатия
                     {
+                        if (selected.ValueRO.Selected == false)
+                        {
+                            continue;
+                        }
+
                         transform.ValueRW = _targetPoint;
                     }
 
                     var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
 
-                    foreach (var (_, _, entity)in SystemAPI.Query<RefRO<MoveSpeed>, RefRO<SelectedComponent>>()
+                    foreach (var (_, selected, entity)in SystemAPI.Query<RefRO<MoveSpeed>, RefRO<SelectedComponent>>()
                                  .WithNone<TargetPoint>()
                                  .WithEntityAccess()) //Добавляем всем у кого нет TargetPoint-a но есть MoveSpeed компонент Target point  
                     {
+                        if (selected.ValueRO.Selected == false)
+                        {
+                            continue;
+                        }
+
                         ecb.AddComponent(entity, _targetPoint); //добовляем к каждой entity  наш TargetPoint
                     }
 
